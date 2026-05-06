@@ -216,7 +216,10 @@
 
   <footer>
     <p>Auto-saved · Last update: <span id="last-save">—</span></p>
-    <button class="reset-btn" onclick="resetAll()">Reset All</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="reset-btn" id="copy-link-btn" onclick="copyLink()" title="Copy this URL and paste in any browser to load your progress">📋 Copy Link</button>
+      <button class="reset-btn" onclick="resetAll()">Reset All</button>
+    </div>
   </footer>
 </div>
 
@@ -292,12 +295,78 @@ function slotEndMs(date, sh, sm, eh, em) {
 }
 
 // ─────────────────────────────────────────────
-//  STATE  (localStorage)
+//  STATE  (URL hash  ←→  localStorage fallback)
+//
+//  WHY: localStorage is browser-specific.
+//  Ticking a slot in Chrome won't appear in Edge
+//  because each browser has its own isolated storage.
+//  Fix: encode checkbox state as base64 in the URL
+//  hash so the link itself carries the data.
+//  Copy the URL → paste in Edge → same state loads.
 // ─────────────────────────────────────────────
-let state = {};
-try { state = JSON.parse(localStorage.getItem('may2026') || '{}'); } catch(e) {}
 
+// ── Encode all 168 slots (28d × 6) into a short base64 string ──
+function encodeState() {
+  const bits = [];
+  for (let w = 0; w < 4; w++) {
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(START); dt.setDate(START.getDate() + w*7 + d);
+      const dk = dateStr(dt);
+      for (let i = 0; i < BASE_SLOTS.length; i++) {
+        bits.push(isChecked(dk, i) ? 1 : 0);
+      }
+    }
+  }
+  // pack bits → bytes → base64
+  const bytes = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    let b = 0;
+    for (let j = 0; j < 8; j++) b |= ((bits[i+j]||0) << (7-j));
+    bytes.push(b);
+  }
+  return btoa(String.fromCharCode(...bytes));
+}
+
+// ── Decode base64 hash back into state object ──
+function decodeHash(encoded) {
+  try {
+    const bin  = atob(encoded);
+    const bits = [];
+    for (let i = 0; i < bin.length; i++) {
+      const byte = bin.charCodeAt(i);
+      for (let b = 7; b >= 0; b--) bits.push((byte >> b) & 1);
+    }
+    const s = {};
+    let idx = 0;
+    for (let w = 0; w < 4; w++) {
+      for (let d = 0; d < 7; d++) {
+        const dt = new Date(START); dt.setDate(START.getDate() + w*7 + d);
+        const dk = dateStr(dt);
+        for (let i = 0; i < BASE_SLOTS.length; i++) {
+          if (bits[idx++]) { if (!s[dk]) s[dk]={}; s[dk][i]=true; }
+        }
+      }
+    }
+    return s;
+  } catch(e) { return null; }
+}
+
+// ── Load: URL hash first, then localStorage fallback ──
+let state = {};
+const _hashRaw = window.location.hash.slice(1); // strip leading #
+if (_hashRaw) {
+  const decoded = decodeHash(_hashRaw);
+  if (decoded) state = decoded;
+} else {
+  try { state = JSON.parse(localStorage.getItem('may2026') || '{}'); } catch(e) {}
+}
+
+// ── Save: update BOTH localStorage AND the URL hash ──
 function save() {
+  const encoded = encodeState();
+  // Update URL hash without reloading the page
+  history.replaceState(null, '', '#' + encoded);
+  // Also save to localStorage as backup for this browser
   localStorage.setItem('may2026', JSON.stringify(state));
   document.getElementById('last-save').textContent = new Date().toLocaleTimeString();
 }
@@ -511,13 +580,37 @@ function updateAll() {
   document.getElementById('stat-missed').textContent = totalMissed;
 }
 
+// ── Copy current URL (with hash) to clipboard ──
+// Paste this URL in Edge / Firefox / any browser → same progress loads
+function copyLink() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-link-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  }).catch(() => {
+    prompt('Copy this URL and open in any browser:', url);
+  });
+}
+
 function resetAll() {
   if (!confirm('Reset all checkboxes and reasons? This cannot be undone.')) return;
   state = {};
   localStorage.removeItem('may2026_reasons');
+  localStorage.removeItem('may2026');
+  // Clear hash from URL
+  history.replaceState(null, '', window.location.pathname);
   document.querySelectorAll('.reason-textarea').forEach(ta => { ta.value=''; });
   document.querySelectorAll('.reason-char').forEach(el => { el.textContent='0/200'; });
-  save(); updateAll();
+  document.getElementById('last-save').textContent = '—';
+  updateAll();
 }
 
 // ── Auto-jump to current week ──
