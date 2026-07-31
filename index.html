@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Accountability Tracker — Aug 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1>Study Accountability Tracker</h1>
+      <p class="subtitle">Habits wapas start karo — FIFA ke baad ab focus mode 🎯</p>
+      <div class="overall-stats" id="overallStats">
+        <div class="stat-card">
+          <span class="stat-value" id="totalDone">0</span>
+          <span class="stat-label">Completed</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="totalMissed">0</span>
+          <span class="stat-label">Missed</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="totalPending">0</span>
+          <span class="stat-label">Pending</span>
+        </div>
+        <div class="stat-card highlight">
+          <span class="stat-value" id="overallPercent">0%</span>
+          <span class="stat-label">Overall Progress</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="week-nav" id="weekNav"></nav>
+
+  <main class="main" id="mainContent"></main>
+
+  <footer class="footer">
+    <p>Data auto-saves in your browser (localStorage). Subject names bhi save hote hain.</p>
+    <button type="button" class="btn-reset" id="resetBtn">Reset All Data</button>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
